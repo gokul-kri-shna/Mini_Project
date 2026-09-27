@@ -39,12 +39,25 @@ pub fn analyze_function_base(func: &FunctionAST) -> SemanticModel {
                     column: trimmed.find(var_name).unwrap_or(0) + 1,
                 });
 
+                let is_declaration = trimmed.starts_with("int ")
+                    || trimmed.starts_with("char ")
+                    || trimmed.starts_with("float ")
+                    || trimmed.starts_with("double ")
+                    || trimmed.starts_with("long ")
+                    || trimmed.starts_with("short ")
+                    || trimmed.starts_with("unsigned ")
+                    || trimmed.starts_with("void ")
+                    || trimmed.starts_with("size_t ")
+                    || trimmed.starts_with("struct ")
+                    || trimmed.starts_with("union ")
+                    || trimmed.starts_with("let ");
+
                 // Classify Memory Access Pattern
                 if trimmed.contains(&format!("free({})", var_name)) || trimmed.contains(&format!("free(*{})", var_name)) {
                     model.memory_patterns.insert(var_name.clone(), MemoryPattern::Free);
                 } else if trimmed.contains(&format!("malloc(")) && trimmed.contains(var_name) {
                     model.memory_patterns.insert(var_name.clone(), MemoryPattern::Allocate);
-                } else if trimmed.contains(&format!("*{}", var_name)) && trimmed.contains('=') {
+                } else if !is_declaration && trimmed.contains(&format!("*{}", var_name)) && trimmed.contains('=') {
                     model.memory_patterns.entry(var_name.clone()).or_insert(MemoryPattern::Write);
                 } else {
                     model.memory_patterns.entry(var_name.clone()).or_insert(MemoryPattern::Read);

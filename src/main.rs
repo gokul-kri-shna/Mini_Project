@@ -24,8 +24,10 @@ fn main() {
         return;
     }
 
-    // CLI Execution Mode
-    let target_file = Path::new("benchmarks/sample_test.c");
+    // CLI Execution Mode: check if target C file passed in args, else default to benchmarks/sample_test.c
+    let default_file = "benchmarks/sample_test.c".to_string();
+    let target_file_str = args.iter().skip(1).find(|arg| arg.ends_with(".c") || !arg.starts_with("--")).unwrap_or(&default_file);
+    let target_file = Path::new(target_file_str);
     println!("\n--- Stage 1: Input Validation ---");
     let validated = match module1_validation::validate_input(target_file) {
         Ok(source) => {

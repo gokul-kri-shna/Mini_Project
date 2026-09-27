@@ -215,12 +215,15 @@ fn parse_single_function_signature(sig_line: &str, lines: &[&str], line_idx: &mu
 
     let head = sig_line[..open_paren].trim();
     let head_parts: Vec<&str> = head.split_whitespace().collect();
-    if head_parts.len() < 2 {
+    let (return_type, func_name) = if head_parts.len() == 1 {
+        ("void".to_string(), head_parts[0].trim_matches('*').to_string())
+    } else if head_parts.len() >= 2 {
+        let ret = head_parts[..head_parts.len() - 1].join(" ");
+        let name = head_parts[head_parts.len() - 1].trim_matches('*').to_string();
+        (ret, name)
+    } else {
         return None;
-    }
-
-    let return_type = head_parts[..head_parts.len() - 1].join(" ");
-    let func_name = head_parts[head_parts.len() - 1].trim_matches('*').to_string();
+    };
 
     let params_str = &sig_line[open_paren + 1..close_paren].trim();
     let parameters = parse_parameters(params_str);
@@ -244,11 +247,27 @@ fn parse_single_function_signature(sig_line: &str, lines: &[&str], line_idx: &mu
         }
 
         if started {
-            body_lines.push(l.to_string());
+            if curr_line_num == start_line {
+                if let Some(pos) = l.find('{') {
+                    let rest = l[pos + 1..].trim();
+                    if !rest.is_empty() {
+                        body_lines.push(rest.to_string());
+                    }
+                }
+            } else {
+                body_lines.push(l.to_string());
+            }
 
-            // Detect call sites (e.g. swap(&px, &py);)
-            if l.contains('(') && l.contains(')') && l.ends_with(';') && !l.starts_with("if") && !l.starts_with("while") && !l.starts_with("for") && !l.starts_with("return") {
-                if let Some(call) = parse_call_site(l, curr_line_num + 1) {
+            // Detect call sites (e.g. swap(&px, &py); or return read_nested(outer);)
+            let call_candidate = if l.starts_with("return ") {
+                l.trim_start_matches("return").trim()
+            } else {
+                l
+            };
+
+            if call_candidate.contains('(') && call_candidate.contains(')') && call_candidate.ends_with(';')
+                && !call_candidate.starts_with("if") && !call_candidate.starts_with("while") && !call_candidate.starts_with("for") {
+                if let Some(call) = parse_call_site(call_candidate, curr_line_num + 1) {
                     call_sites.push(call);
                 }
             }

@@ -22,7 +22,7 @@ pub fn run_repair_loop(
     candidate_rust_path: &str,
     max_iterations: usize,
 ) -> Result<RepairResult, String> {
-    let mut logs = Vec::new();
+    let mut logs: Vec<RepairLogEntry> = Vec::new();
     let mut current_rust = std::fs::read_to_string(candidate_rust_path)
         .map_err(|e| format!("Failed to read candidate Rust file '{}': {}", candidate_rust_path, e))?;
 
@@ -33,6 +33,9 @@ pub fn run_repair_loop(
         
         if comp_res.success {
             println!("   ✅ Compilation Succeeded at Iteration {}!", iteration);
+            if let Some(last_log) = logs.last_mut() {
+                last_log.compilation_successful = true;
+            }
             current_rust = std::fs::read_to_string(candidate_rust_path).unwrap_or(current_rust);
             return Ok(RepairResult {
                 final_success: true,
